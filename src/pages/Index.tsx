@@ -443,7 +443,28 @@ function ServerList({ dbServers }: { dbServers: ServerKey[] }) {
   );
 }
 
-function Panel({ user }: { user: User }) {
+function SubExpiredBanner({ setActive }: { setActive: (v: string) => void }) {
+  return (
+    <div className="container py-20 animate-fade-in max-w-xl text-center">
+      <div className="glass rounded-3xl p-10 flex flex-col items-center gap-5">
+        <div className="w-20 h-20 rounded-2xl bg-destructive/10 flex items-center justify-center">
+          <Icon name="ShieldOff" size={40} className="text-destructive" />
+        </div>
+        <h2 className="font-display text-3xl font-bold">Подписка <span className="text-destructive">истекла</span></h2>
+        <p className="text-muted-foreground">Доступ к VPN-серверам заблокирован. Продлите подписку, чтобы снова получить ключ подключения.</p>
+        <div className="w-full h-px bg-border" />
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Icon name="WifiOff" size={16} className="text-destructive" /> VPN отключён
+        </div>
+        <Button onClick={() => setActive('pay')} className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-display tracking-wider font-semibold glow-cyan">
+          <Icon name="Zap" size={18} className="mr-2" /> ПРОДЛИТЬ ПОДПИСКУ
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function Panel({ user, setActive }: { user: User; setActive: (v: string) => void }) {
   const [tab, setTab] = useState('overview');
   const [subscription, setSubscription] = useState<Subscription | null>(user.subscription);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -452,6 +473,9 @@ function Panel({ user }: { user: User }) {
   const [oldPass, setOldPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [passMsg, setPassMsg] = useState('');
+
+  const isExpired = !subscription || new Date(subscription.expires_at) < new Date();
+  const daysLeft = subscription ? Math.ceil((new Date(subscription.expires_at).getTime() - Date.now()) / 86400000) : 0;
 
   const loadData = useCallback(async () => {
     const [subRes, payRes, srvRes, trafRes] = await Promise.all([
@@ -497,11 +521,27 @@ function Panel({ user }: { user: User }) {
             {subscription ? `Тариф ${subscription.plan} · активен до ${new Date(subscription.expires_at).toLocaleDateString('ru')}` : 'Нет активной подписки'}
           </p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 rounded-xl glass">
-          <span className="w-2.5 h-2.5 rounded-full bg-primary animate-glow-pulse" />
-          <span className="text-sm font-medium">Защита включена</span>
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-xl glass ${isExpired ? 'border border-destructive/30' : ''}`}>
+          <span className={`w-2.5 h-2.5 rounded-full ${isExpired ? 'bg-destructive' : 'bg-primary animate-glow-pulse'}`} />
+          <span className="text-sm font-medium">{isExpired ? 'VPN отключён' : 'Защита включена'}</span>
         </div>
       </div>
+
+      {!isExpired && daysLeft <= 3 && daysLeft > 0 && (
+        <div className="flex items-center gap-3 mb-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-sm">
+          <Icon name="TriangleAlert" size={16} />
+          Подписка истекает через <span className="font-semibold">{daysLeft} дн.</span> — не забудь продлить!
+          <button onClick={() => setActive('pay')} className="ml-auto underline font-semibold">Продлить</button>
+        </div>
+      )}
+
+      {isExpired && (
+        <div className="flex items-center gap-3 mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+          <Icon name="ShieldOff" size={16} />
+          Подписка истекла — VPN-ключ недоступен. Серверы заблокированы.
+          <button onClick={() => setActive('pay')} className="ml-auto underline font-semibold whitespace-nowrap">Продлить →</button>
+        </div>
+      )}
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-8">
         {tabs.map((t) => (
@@ -556,7 +596,7 @@ function Panel({ user }: { user: User }) {
       )}
 
       {tab === 'servers' && (
-        <ServerList dbServers={dbServers} />
+        isExpired ? <SubExpiredBanner setActive={setActive} /> : <ServerList dbServers={dbServers} />
       )}
 
       {tab === 'devices' && (
@@ -653,7 +693,7 @@ const Index = () => {
       {active === 'home' && <Home setActive={setActive} />}
       {active === 'plans' && <Plans setActive={setActive} />}
       {active === 'pay' && <Pay />}
-      {active === 'panel' && <Panel user={user} />}
+      {active === 'panel' && <Panel user={user} setActive={setActive} />}
       <footer className="border-t border-border/60 py-8 text-center text-muted-foreground text-sm">
         <div className="container">NEBULA VPN © 2026 · Контакты, оферта и реквизиты — в настройках сайта</div>
       </footer>

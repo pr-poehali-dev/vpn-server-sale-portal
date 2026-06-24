@@ -30,19 +30,30 @@ def handler(event: dict, context) -> dict:
     cur = conn.cursor()
 
     try:
-        # GET /status?user_id=X — текущая подписка
+        # GET /status?user_id=X — текущая подписка (с авто-деактивацией)
         if method == 'GET' and path.endswith('/status'):
             user_id = params.get('user_id')
+
+            # Авто-деактивация: помечаем истёкшие подписки как expired
             cur.execute(
-                "SELECT id, plan, status, auto_renew, price, started_at, expires_at FROM subscriptions WHERE user_id = %s AND status = 'active' ORDER BY expires_at DESC LIMIT 1",
+                "UPDATE subscriptions SET status = 'expired' WHERE user_id = %s AND status = 'active' AND expires_at < NOW()",
+                (user_id,)
+            )
+            conn.commit()
+
+            cur.execute(
+                "SELECT id, plan, status, auto_renew, price, started_at, expires_at FROM subscriptions WHERE user_id = %s ORDER BY expires_at DESC LIMIT 1",
                 (user_id,)
             )
             sub = cur.fetchone()
             if not sub:
                 return {'statusCode': 200, 'headers': CORS, 'body': json.dumps({'subscription': None})}
+
+            is_active = sub[2] == 'active' and sub[6] > datetime.now()
             return {'statusCode': 200, 'headers': CORS, 'body': json.dumps({'subscription': {
                 'id': sub[0], 'plan': sub[1], 'status': sub[2], 'auto_renew': sub[3],
-                'price': sub[4], 'started_at': sub[5].isoformat(), 'expires_at': sub[6].isoformat()
+                'price': sub[4], 'started_at': sub[5].isoformat(), 'expires_at': sub[6].isoformat(),
+                'is_active': is_active
             }})}
 
         # POST /activate — активировать подписку после оплаты
