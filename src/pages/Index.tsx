@@ -41,12 +41,12 @@ function payViaYoomoney(plan: string, sum: string, email: string) {
 }
 
 const SERVERS = [
-  { city: 'Амстердам', flag: '🇳🇱', ping: 18, load: 32 },
-  { city: 'Франкфурт', flag: '🇩🇪', ping: 24, load: 58 },
-  { city: 'Лондон', flag: '🇬🇧', ping: 29, load: 41 },
-  { city: 'Нью-Йорк', flag: '🇺🇸', ping: 96, load: 27 },
-  { city: 'Токио', flag: '🇯🇵', ping: 142, load: 19 },
-  { city: 'Сингапур', flag: '🇸🇬', ping: 158, load: 12 },
+  { city: 'Амстердам', flag: '🇳🇱', ping: 18, load: 32, vless: 'vless://ВСТАВЬ_КЛЮЧ_AMSTERDAM@YOUR_IP:443?type=ws&security=tls#NEBULA-AMS' },
+  { city: 'Франкфурт', flag: '🇩🇪', ping: 24, load: 58, vless: 'vless://ВСТАВЬ_КЛЮЧ_FRANKFURT@YOUR_IP:443?type=ws&security=tls#NEBULA-FRA' },
+  { city: 'Лондон', flag: '🇬🇧', ping: 29, load: 41, vless: 'vless://ВСТАВЬ_КЛЮЧ_LONDON@YOUR_IP:443?type=ws&security=tls#NEBULA-LON' },
+  { city: 'Нью-Йорк', flag: '🇺🇸', ping: 96, load: 27, vless: 'vless://ВСТАВЬ_КЛЮЧ_NEWYORK@YOUR_IP:443?type=ws&security=tls#NEBULA-NYC' },
+  { city: 'Токио', flag: '🇯🇵', ping: 142, load: 19, vless: 'vless://ВСТАВЬ_КЛЮЧ_TOKYO@YOUR_IP:443?type=ws&security=tls#NEBULA-TYO' },
+  { city: 'Сингапур', flag: '🇸🇬', ping: 158, load: 12, vless: 'vless://ВСТАВЬ_КЛЮЧ_SINGAPORE@YOUR_IP:443?type=ws&security=tls#NEBULA-SIN' },
 ];
 
 const PAYMENTS = [
@@ -297,6 +297,59 @@ function Pay() {
   );
 }
 
+function ServerList() {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copy = (city: string, vless: string) => {
+    navigator.clipboard.writeText(vless).then(() => {
+      setCopied(city);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  };
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-5 p-4 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary">
+        <Icon name="Info" size={16} />
+        Скопируй ключ и вставь в Happ: <span className="font-semibold">Добавить сервер → Вставить ссылку</span>
+      </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {SERVERS.map((s) => (
+          <div key={s.city} className="glass rounded-2xl p-5 hover:glow-cyan transition-all">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{s.flag}</span>
+                <div>
+                  <div className="font-display font-semibold">{s.city}</div>
+                  <div className="text-xs text-muted-foreground">Пинг {s.ping} мс</div>
+                </div>
+              </div>
+              <Icon name="Circle" size={10} className={s.load < 40 ? 'text-primary' : 'text-secondary'} />
+            </div>
+            <div className="mt-4">
+              <div className="flex justify-between text-xs text-muted-foreground mb-1"><span>Нагрузка</span><span>{s.load}%</span></div>
+              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className={`h-full rounded-full ${s.load < 40 ? 'bg-primary' : 'bg-secondary'}`} style={{ width: `${s.load}%` }} />
+              </div>
+            </div>
+            <button
+              onClick={() => copy(s.city, s.vless)}
+              className={`w-full mt-4 h-9 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${
+                copied === s.city
+                  ? 'bg-primary/20 text-primary border border-primary/40'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-primary/10 hover:text-primary border border-transparent'
+              }`}
+            >
+              <Icon name={copied === s.city ? 'Check' : 'Copy'} size={15} />
+              {copied === s.city ? 'Скопировано!' : 'Копировать VLESS-ключ'}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Panel() {
   const [tab, setTab] = useState('overview');
   const tabs = [
@@ -363,28 +416,7 @@ function Panel() {
       )}
 
       {tab === 'servers' && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {SERVERS.map((s) => (
-            <div key={s.city} className="glass rounded-2xl p-5 hover:glow-cyan transition-all cursor-pointer">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{s.flag}</span>
-                  <div>
-                    <div className="font-display font-semibold">{s.city}</div>
-                    <div className="text-xs text-muted-foreground">Пинг {s.ping} мс</div>
-                  </div>
-                </div>
-                <Icon name="Circle" size={10} className={s.load < 40 ? 'text-primary' : 'text-secondary'} />
-              </div>
-              <div className="mt-4">
-                <div className="flex justify-between text-xs text-muted-foreground mb-1"><span>Нагрузка</span><span>{s.load}%</span></div>
-                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className={`h-full rounded-full ${s.load < 40 ? 'bg-primary' : 'bg-secondary'}`} style={{ width: `${s.load}%` }} />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <ServerList />
       )}
 
       {tab === 'devices' && (
