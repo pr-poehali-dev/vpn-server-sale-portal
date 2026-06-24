@@ -5,12 +5,40 @@ import { Input } from '@/components/ui/input';
 
 const HERO_BG = 'https://cdn.poehali.dev/projects/aba5ca7c-cc4a-43c2-bf6f-d0d6de727888/files/99a414c1-dcfc-4ec8-b779-c7c59b0679f3.jpg';
 const ACCESS_PASSWORD = 'nebula';
+const YOOMONEY_WALLET = '4100119478447461';
 
 const PLANS = [
-  { name: 'START', price: '149', period: 'мес', speed: '100 Мбит/с', devices: '2', accent: 'cyan', features: ['1 локация на выбор', 'Без логов', 'Поддержка 24/7'] },
-  { name: 'PRO', price: '349', period: 'мес', speed: '1 Гбит/с', devices: '5', accent: 'violet', popular: true, features: ['12 локаций', 'Без логов', 'Двойное шифрование', 'Приоритетная поддержка'] },
-  { name: 'ULTRA', price: '690', period: 'мес', speed: '10 Гбит/с', devices: '∞', accent: 'cyan', features: ['Все 40+ локаций', 'Выделенный IP', 'Двойное шифрование', 'Персональный менеджер'] },
+  { name: 'START', price: '250', period: 'мес', speed: '100 Мбит/с', devices: '2', accent: 'cyan', features: ['1 локация на выбор', 'Без логов', 'Поддержка 24/7'] },
+  { name: 'PRO', price: '350', period: 'мес', speed: '1 Гбит/с', devices: '5', accent: 'violet', popular: true, features: ['12 локаций', 'Без логов', 'Двойное шифрование', 'Приоритетная поддержка'] },
+  { name: 'ULTRA', price: '590', period: 'мес', speed: '10 Гбит/с', devices: '∞', accent: 'cyan', features: ['Все 40+ локаций', 'Выделенный IP', 'Двойное шифрование', 'Персональный менеджер'] },
 ];
+
+function payViaYoomoney(plan: string, sum: string, email: string) {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = 'https://yoomoney.ru/quickpay/confirm.xml';
+  form.target = '_blank';
+  const fields: Record<string, string> = {
+    receiver: YOOMONEY_WALLET,
+    'quickpay-form': 'shop',
+    targets: `NEBULA VPN — тариф ${plan}`,
+    paymentType: 'AC',
+    sum,
+    label: `nebula_${plan}_${Date.now()}`,
+    comment: email ? `Email: ${email}` : '',
+    successURL: window.location.href,
+  };
+  Object.entries(fields).forEach(([k, v]) => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = k;
+    input.value = v;
+    form.appendChild(input);
+  });
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+}
 
 const SERVERS = [
   { city: 'Амстердам', flag: '🇳🇱', ping: 18, load: 32 },
@@ -228,7 +256,8 @@ function Plans({ setActive }: { setActive: (v: string) => void }) {
 
 function Pay() {
   const [plan, setPlan] = useState('PRO');
-  const sums: Record<string, string> = { START: '149', PRO: '349', ULTRA: '690' };
+  const [email, setEmail] = useState('');
+  const sums: Record<string, string> = { START: '250', PRO: '350', ULTRA: '590' };
   return (
     <div className="container py-20 animate-fade-in max-w-2xl">
       <div className="text-center mb-12">
@@ -256,10 +285,10 @@ function Pay() {
 
         <div className="mt-6 space-y-3">
           <label className="text-xs uppercase tracking-widest text-muted-foreground">Email для чека</label>
-          <Input placeholder="you@mail.ru" className="h-12 bg-muted/40 border-border focus-visible:ring-primary" />
+          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@mail.ru" className="h-12 bg-muted/40 border-border focus-visible:ring-primary" />
         </div>
 
-        <Button className="w-full h-14 mt-8 bg-[#8B3FFC] hover:bg-[#7a2ff0] text-white font-display text-base tracking-wider font-semibold flex items-center justify-center gap-2">
+        <Button onClick={() => payViaYoomoney(plan, sums[plan], email)} className="w-full h-14 mt-8 bg-[#8B3FFC] hover:bg-[#7a2ff0] text-white font-display text-base tracking-wider font-semibold flex items-center justify-center gap-2">
           <Icon name="Wallet" size={20} /> ОПЛАТИТЬ ЧЕРЕЗ ЮMONEY
         </Button>
         <p className="text-center text-xs text-muted-foreground mt-4 flex items-center justify-center gap-1">
