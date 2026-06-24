@@ -51,13 +51,15 @@ function payViaYoomoney(plan: string, sum: string, email: string) {
   document.body.removeChild(form);
 }
 
+const VPN_KEY = 'https://sub.nn-id.com/5882n_4XsW3SrVJq';
+
 const SERVERS = [
-  { city: 'Амстердам', flag: '🇳🇱', ping: 18, load: 32, vless: 'vless://ВСТАВЬ_КЛЮЧ_AMSTERDAM@YOUR_IP:443?type=ws&security=tls#NEBULA-AMS' },
-  { city: 'Франкфурт', flag: '🇩🇪', ping: 24, load: 58, vless: 'vless://ВСТАВЬ_КЛЮЧ_FRANKFURT@YOUR_IP:443?type=ws&security=tls#NEBULA-FRA' },
-  { city: 'Лондон', flag: '🇬🇧', ping: 29, load: 41, vless: 'vless://ВСТАВЬ_КЛЮЧ_LONDON@YOUR_IP:443?type=ws&security=tls#NEBULA-LON' },
-  { city: 'Нью-Йорк', flag: '🇺🇸', ping: 96, load: 27, vless: 'vless://ВСТАВЬ_КЛЮЧ_NEWYORK@YOUR_IP:443?type=ws&security=tls#NEBULA-NYC' },
-  { city: 'Токио', flag: '🇯🇵', ping: 142, load: 19, vless: 'vless://ВСТАВЬ_КЛЮЧ_TOKYO@YOUR_IP:443?type=ws&security=tls#NEBULA-TYO' },
-  { city: 'Сингапур', flag: '🇸🇬', ping: 158, load: 12, vless: 'vless://ВСТАВЬ_КЛЮЧ_SINGAPORE@YOUR_IP:443?type=ws&security=tls#NEBULA-SIN' },
+  { city: 'Амстердам', flag: '🇳🇱', ping: 18, load: 32, vless: VPN_KEY },
+  { city: 'Франкфурт', flag: '🇩🇪', ping: 24, load: 58, vless: VPN_KEY },
+  { city: 'Лондон', flag: '🇬🇧', ping: 29, load: 41, vless: VPN_KEY },
+  { city: 'Нью-Йорк', flag: '🇺🇸', ping: 96, load: 27, vless: VPN_KEY },
+  { city: 'Токио', flag: '🇯🇵', ping: 142, load: 19, vless: VPN_KEY },
+  { city: 'Сингапур', flag: '🇸🇬', ping: 158, load: 12, vless: VPN_KEY },
 ];
 
 const PAYMENTS = [
@@ -299,7 +301,22 @@ function Plans({ setActive }: { setActive: (v: string) => void }) {
 function Pay() {
   const [plan, setPlan] = useState('PRO');
   const [email, setEmail] = useState('');
+  const [paid, setPaid] = useState(false);
+  const [copied, setCopied] = useState(false);
   const sums: Record<string, string> = { START: '250', PRO: '350', ULTRA: '590' };
+
+  const handlePay = () => {
+    payViaYoomoney(plan, sums[plan], email);
+    setTimeout(() => setPaid(true), 1500);
+  };
+
+  const copyKey = () => {
+    navigator.clipboard.writeText(VPN_KEY).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   return (
     <div className="container py-20 animate-fade-in max-w-2xl">
       <div className="text-center mb-12">
@@ -330,13 +347,40 @@ function Pay() {
           <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@mail.ru" className="h-12 bg-muted/40 border-border focus-visible:ring-primary" />
         </div>
 
-        <Button onClick={() => payViaYoomoney(plan, sums[plan], email)} className="w-full h-14 mt-8 bg-[#8B3FFC] hover:bg-[#7a2ff0] text-white font-display text-base tracking-wider font-semibold flex items-center justify-center gap-2">
+        <Button onClick={handlePay} className="w-full h-14 mt-8 bg-[#8B3FFC] hover:bg-[#7a2ff0] text-white font-display text-base tracking-wider font-semibold flex items-center justify-center gap-2">
           <Icon name="Wallet" size={20} /> ОПЛАТИТЬ ЧЕРЕЗ ЮMONEY
         </Button>
         <p className="text-center text-xs text-muted-foreground mt-4 flex items-center justify-center gap-1">
-          <Icon name="Lock" size={12} /> Платёж защищён · номер кошелька в настройках
+          <Icon name="Lock" size={12} /> Платёж защищён
         </p>
       </div>
+
+      {paid && (
+        <div className="mt-6 glass rounded-3xl p-8 glow-cyan animate-fade-in">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+              <Icon name="CheckCircle" size={22} className="text-primary" />
+            </div>
+            <div>
+              <h3 className="font-display font-bold text-lg">Оплата прошла!</h3>
+              <p className="text-muted-foreground text-sm">Скопируй ключ и добавь в Happ</p>
+            </div>
+          </div>
+          <div className="p-4 rounded-xl bg-muted/40 border border-primary/20 font-mono text-xs break-all text-primary mb-4">
+            {VPN_KEY}
+          </div>
+          <button
+            onClick={copyKey}
+            className={`w-full h-11 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all text-sm ${copied ? 'bg-primary/20 text-primary border border-primary/40' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
+          >
+            <Icon name={copied ? 'Check' : 'Copy'} size={17} />
+            {copied ? 'Скопировано!' : 'Скопировать ключ подключения'}
+          </button>
+          <p className="text-xs text-muted-foreground mt-3 text-center">
+            Happ → Добавить сервер → Вставить ссылку
+          </p>
+        </div>
+      )}
     </div>
   );
 }
