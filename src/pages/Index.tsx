@@ -57,8 +57,6 @@ const PAYMENTS = [
 
 const SESSIONS = [
   { device: 'MacBook Pro', os: 'macOS · Амстердам', icon: 'Laptop', current: true },
-  { device: 'iPhone 16', os: 'iOS · Франкфурт', icon: 'Smartphone', current: false },
-  { device: 'Windows PC', os: 'Windows 11 · Лондон', icon: 'Monitor', current: false },
 ];
 
 function Login({ onLogin }: { onLogin: () => void }) {
