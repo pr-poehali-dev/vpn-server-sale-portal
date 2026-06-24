@@ -1,7 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
+const API = {
+  auth: 'https://functions.poehali.dev/14c2e308-7653-40a6-8d2a-f56f27122e5d',
+  subscriptions: 'https://functions.poehali.dev/effb9ea7-8cc5-434c-be6f-b9055c568fe2',
+  servers: 'https://functions.poehali.dev/09570df7-2cea-443e-92f7-aad29c8ea429',
+};
+
+type User = { user_id: number; email: string; username: string; token: string; subscription: Subscription | null };
+type Subscription = { plan: string; status: string; expires_at: string; auto_renew: boolean };
+type Payment = { plan: string; amount: number; status: string; paid_at: string };
+type ServerKey = { id: number; city: string; flag: string; vless: string; ping: number; load: number; active: boolean };
 
 const HERO_BG = 'https://cdn.poehali.dev/projects/aba5ca7c-cc4a-43c2-bf6f-d0d6de727888/files/99a414c1-dcfc-4ec8-b779-c7c59b0679f3.jpg';
 const ACCESS_PASSWORD = 'nebula';
@@ -59,13 +70,36 @@ const SESSIONS = [
   { device: 'MacBook Pro', os: 'macOS · Амстердам', icon: 'Laptop', current: true },
 ];
 
-function Login({ onLogin }: { onLogin: () => void }) {
+function Login({ onLogin }: { onLogin: (user: User) => void }) {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
-  const [error, setError] = useState(false);
+  const [sitePass, setSitePass] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const submit = () => {
-    if (pass.trim().toLowerCase() === ACCESS_PASSWORD) onLogin();
-    else setError(true);
+  const submit = async () => {
+    if (sitePass.trim().toLowerCase() !== ACCESS_PASSWORD) {
+      setError('Неверный пароль доступа к сайту');
+      return;
+    }
+    if (!email || !pass) { setError('Заполните все поля'); return; }
+    setLoading(true); setError('');
+    try {
+      const endpoint = mode === 'login' ? '/login' : '/register';
+      const res = await fetch(API.auth + endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Ошибка входа'); return; }
+      onLogin(data);
+    } catch {
+      setError('Ошибка соединения с сервером');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -78,26 +112,36 @@ function Login({ onLogin }: { onLogin: () => void }) {
           </div>
         </div>
         <h1 className="font-display text-3xl font-bold text-center tracking-wide">NEBULA<span className="gradient-text"> VPN</span></h1>
-        <p className="text-center text-muted-foreground text-sm mt-2 mb-8">Закрытая зона. Введите пароль доступа</p>
+        <p className="text-center text-muted-foreground text-sm mt-2 mb-6">Закрытая зона. Введите пароль доступа</p>
 
-        <label className="text-xs uppercase tracking-widest text-muted-foreground">Пароль</label>
-        <div className="relative mt-2">
-          <Icon name="Lock" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="password"
-            value={pass}
-            onChange={(e) => { setPass(e.target.value); setError(false); }}
-            onKeyDown={(e) => e.key === 'Enter' && submit()}
-            placeholder="••••••••"
-            className="pl-11 h-12 bg-muted/40 border-border focus-visible:ring-primary text-base"
-          />
+        <div className="flex rounded-xl bg-muted/30 p-1 mb-6">
+          {(['login', 'register'] as const).map((m) => (
+            <button key={m} onClick={() => setMode(m)} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${mode === m ? 'bg-primary/20 text-primary' : 'text-muted-foreground'}`}>
+              {m === 'login' ? 'Войти' : 'Регистрация'}
+            </button>
+          ))}
         </div>
-        {error && <p className="text-destructive text-sm mt-2 flex items-center gap-1"><Icon name="TriangleAlert" size={14} /> Неверный пароль</p>}
 
-        <Button onClick={submit} className="w-full h-12 mt-6 bg-primary text-primary-foreground hover:bg-primary/90 font-display text-base tracking-wider font-semibold glow-cyan">
-          ВОЙТИ <Icon name="ArrowRight" size={18} className="ml-1" />
+        <div className="space-y-3">
+          <div className="relative">
+            <Icon name="Lock" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={sitePass} onChange={(e) => { setSitePass(e.target.value); setError(''); }} placeholder="Пароль сайта" className="pl-10 h-11 bg-muted/40 border-border" />
+          </div>
+          <div className="relative">
+            <Icon name="Mail" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={email} onChange={(e) => { setEmail(e.target.value); setError(''); }} placeholder="Email" type="email" className="pl-10 h-11 bg-muted/40 border-border" />
+          </div>
+          <div className="relative">
+            <Icon name="KeyRound" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={pass} onChange={(e) => { setPass(e.target.value); setError(''); }} onKeyDown={(e) => e.key === 'Enter' && submit()} placeholder="Пароль аккаунта" type="password" className="pl-10 h-11 bg-muted/40 border-border" />
+          </div>
+        </div>
+
+        {error && <p className="text-destructive text-sm mt-3 flex items-center gap-1"><Icon name="TriangleAlert" size={14} /> {error}</p>}
+
+        <Button onClick={submit} disabled={loading} className="w-full h-12 mt-5 bg-primary text-primary-foreground hover:bg-primary/90 font-display text-base tracking-wider font-semibold glow-cyan">
+          {loading ? <Icon name="Loader" size={18} className="animate-spin" /> : <>{mode === 'login' ? 'ВОЙТИ' : 'СОЗДАТЬ АККАУНТ'} <Icon name="ArrowRight" size={18} className="ml-1" /></>}
         </Button>
-        <p className="text-center text-xs text-muted-foreground mt-6">Подсказка для демо: <span className="text-primary font-mono">nebula</span></p>
       </div>
     </div>
   );
@@ -297,7 +341,7 @@ function Pay() {
   );
 }
 
-function ServerList() {
+function ServerList({ dbServers }: { dbServers: ServerKey[] }) {
   const [copied, setCopied] = useState<string | null>(null);
 
   const copy = (city: string, vless: string) => {
@@ -307,14 +351,19 @@ function ServerList() {
     });
   };
 
+  const list = dbServers.length > 0
+    ? dbServers.map(s => ({ city: s.city, flag: s.flag, ping: s.ping, load: s.load, vless: s.vless }))
+    : SERVERS;
+
   return (
     <div>
       <div className="flex items-center gap-2 mb-5 p-4 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary">
         <Icon name="Info" size={16} />
         Скопируй ключ и вставь в Happ: <span className="font-semibold">Добавить сервер → Вставить ссылку</span>
+        {dbServers.length > 0 && <span className="ml-auto text-xs bg-primary/20 px-2 py-0.5 rounded-full">{dbServers.length} из БД</span>}
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {SERVERS.map((s) => (
+        {list.map((s) => (
           <div key={s.city} className="glass rounded-2xl p-5 hover:glow-cyan transition-all">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -350,8 +399,44 @@ function ServerList() {
   );
 }
 
-function Panel() {
+function Panel({ user }: { user: User }) {
   const [tab, setTab] = useState('overview');
+  const [subscription, setSubscription] = useState<Subscription | null>(user.subscription);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [dbServers, setDbServers] = useState<ServerKey[]>([]);
+  const [traffic, setTraffic] = useState({ used_gb: 0, limit_gb: null as number | null });
+  const [oldPass, setOldPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [passMsg, setPassMsg] = useState('');
+
+  const loadData = useCallback(async () => {
+    const [subRes, payRes, srvRes, trafRes] = await Promise.all([
+      fetch(`${API.subscriptions}/status?user_id=${user.user_id}`),
+      fetch(`${API.subscriptions}/payments?user_id=${user.user_id}`),
+      fetch(`${API.servers}/keys?user_id=${user.user_id}`),
+      fetch(`${API.servers}/traffic?user_id=${user.user_id}`),
+    ]);
+    const [subData, payData, srvData, trafData] = await Promise.all([subRes.json(), payRes.json(), srvRes.json(), trafRes.json()]);
+    if (subData.subscription) setSubscription(subData.subscription);
+    if (payData.payments) setPayments(payData.payments);
+    if (srvData.servers) setDbServers(srvData.servers);
+    if (trafData) setTraffic({ used_gb: trafData.used_gb || 0, limit_gb: trafData.limit_gb });
+  }, [user.user_id]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const changePassword = async () => {
+    setPassMsg('');
+    const res = await fetch(`${API.auth}/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: user.user_id, old_password: oldPass, new_password: newPass }),
+    });
+    const data = await res.json();
+    setPassMsg(res.ok ? '✓ Пароль обновлён' : data.error || 'Ошибка');
+    if (res.ok) { setOldPass(''); setNewPass(''); }
+  };
+
   const tabs = [
     { id: 'overview', label: 'Обзор', icon: 'Activity' },
     { id: 'servers', label: 'Серверы', icon: 'Server' },
@@ -364,7 +449,9 @@ function Panel() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="font-display text-3xl font-bold">Панель <span className="gradient-text">управления</span></h1>
-          <p className="text-muted-foreground text-sm mt-1">Тариф PRO · активен до 12.07.2026</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            {subscription ? `Тариф ${subscription.plan} · активен до ${new Date(subscription.expires_at).toLocaleDateString('ru')}` : 'Нет активной подписки'}
+          </p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 rounded-xl glass">
           <span className="w-2.5 h-2.5 rounded-full bg-primary animate-glow-pulse" />
@@ -387,36 +474,45 @@ function Panel() {
       {tab === 'overview' && (
         <div className="grid lg:grid-cols-3 gap-5">
           <div className="glass rounded-2xl p-6 lg:col-span-2">
-            <h3 className="font-display text-lg font-semibold mb-5 flex items-center gap-2"><Icon name="Activity" size={18} className="text-primary" /> Текущее подключение</h3>
-            <div className="grid grid-cols-3 gap-4">
-              {[{ l: 'Локация', v: '🇳🇱 Амстердам' }, { l: 'Скорость', v: '847 Мбит/с' }, { l: 'Пинг', v: '18 мс' }].map((x) => (
+            <h3 className="font-display text-lg font-semibold mb-5 flex items-center gap-2"><Icon name="Activity" size={18} className="text-primary" /> Аккаунт</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {[{ l: 'Email', v: user.email }, { l: 'Имя', v: user.username || '—' }].map((x) => (
                 <div key={x.l} className="p-4 rounded-xl bg-muted/30">
                   <div className="text-xs text-muted-foreground">{x.l}</div>
-                  <div className="font-display text-lg font-semibold mt-1">{x.v}</div>
+                  <div className="font-semibold mt-1 truncate">{x.v}</div>
                 </div>
               ))}
             </div>
             <div className="mt-5">
-              <div className="flex justify-between text-sm mb-2"><span className="text-muted-foreground">Трафик за месяц</span><span>312 / ∞ ГБ</span></div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-muted-foreground">Трафик использован</span>
+                <span>{traffic.used_gb} / {traffic.limit_gb ? `${traffic.limit_gb} ГБ` : '∞'}</span>
+              </div>
               <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary" style={{ width: '42%' }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary"
+                  style={{ width: traffic.limit_gb ? `${Math.min(100, (traffic.used_gb / traffic.limit_gb) * 100)}%` : '5%' }} />
               </div>
             </div>
           </div>
           <div className="glass rounded-2xl p-6">
             <h3 className="font-display text-lg font-semibold mb-5 flex items-center gap-2"><Icon name="RefreshCw" size={18} className="text-secondary" /> Подписка</h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">План</span><span className="font-semibold">PRO</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Продление</span><span className="font-semibold text-primary">Авто · 12.07</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Стоимость</span><span className="font-semibold">349 ₽/мес</span></div>
-            </div>
-            <Button variant="outline" className="w-full mt-5 border-border bg-muted/30 hover:bg-muted/60">Управлять подпиской</Button>
+            {subscription ? (
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">План</span><span className="font-semibold">{subscription.plan}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Статус</span><span className="font-semibold text-primary">{subscription.status === 'active' ? 'Активна' : subscription.status}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">До</span><span className="font-semibold">{new Date(subscription.expires_at).toLocaleDateString('ru')}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Автопродление</span><span className={subscription.auto_renew ? 'text-primary font-semibold' : 'text-muted-foreground'}>{subscription.auto_renew ? 'Вкл' : 'Выкл'}</span></div>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm">Нет активной подписки</p>
+            )}
+            <Button onClick={() => setTab('billing')} variant="outline" className="w-full mt-5 border-border bg-muted/30 hover:bg-muted/60">История платежей</Button>
           </div>
         </div>
       )}
 
       {tab === 'servers' && (
-        <ServerList />
+        <ServerList dbServers={dbServers} />
       )}
 
       {tab === 'devices' && (
@@ -441,23 +537,29 @@ function Panel() {
       {tab === 'billing' && (
         <div className="glass rounded-2xl p-6 max-w-3xl">
           <h3 className="font-display text-lg font-semibold mb-5">История платежей</h3>
-          <div className="space-y-2">
-            {PAYMENTS.map((p, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
-                <div className="flex items-center gap-3">
-                  <Icon name="Receipt" size={18} className="text-primary" />
-                  <div>
-                    <div className="text-sm font-medium">{p.plan}</div>
-                    <div className="text-xs text-muted-foreground">{p.date}</div>
+          {payments.length === 0 ? (
+            <p className="text-muted-foreground text-sm py-6 text-center">Платежей пока нет</p>
+          ) : (
+            <div className="space-y-2">
+              {payments.map((p, i) => (
+                <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <Icon name="Receipt" size={18} className="text-primary" />
+                    <div>
+                      <div className="text-sm font-medium">{p.plan} · 1 мес</div>
+                      <div className="text-xs text-muted-foreground">{new Date(p.paid_at).toLocaleDateString('ru')}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="font-display font-semibold">{p.amount} ₽</span>
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-primary/15 text-primary">
+                      {p.status === 'paid' ? 'Оплачено' : p.status}
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="font-display font-semibold">{p.sum}</span>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-primary/15 text-primary">{p.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -466,9 +568,10 @@ function Panel() {
           <div className="glass rounded-2xl p-6">
             <h3 className="font-display text-lg font-semibold mb-5 flex items-center gap-2"><Icon name="KeyRound" size={18} className="text-primary" /> Смена пароля</h3>
             <div className="space-y-3">
-              <Input type="password" placeholder="Текущий пароль" className="h-11 bg-muted/40 border-border" />
-              <Input type="password" placeholder="Новый пароль" className="h-11 bg-muted/40 border-border" />
-              <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">Обновить пароль</Button>
+              <Input type="password" value={oldPass} onChange={e => setOldPass(e.target.value)} placeholder="Текущий пароль" className="h-11 bg-muted/40 border-border" />
+              <Input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Новый пароль (мин. 6 симв.)" className="h-11 bg-muted/40 border-border" />
+              {passMsg && <p className={`text-sm ${passMsg.startsWith('✓') ? 'text-primary' : 'text-destructive'}`}>{passMsg}</p>}
+              <Button onClick={changePassword} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">Обновить пароль</Button>
             </div>
           </div>
           <div className="glass rounded-2xl p-6">
@@ -495,18 +598,18 @@ function Panel() {
 }
 
 const Index = () => {
-  const [logged, setLogged] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const [active, setActive] = useState('home');
 
-  if (!logged) return <Login onLogin={() => setLogged(true)} />;
+  if (!user) return <Login onLogin={(u) => setUser(u)} />;
 
   return (
     <div className="min-h-screen">
-      <Nav active={active} setActive={setActive} onLogout={() => setLogged(false)} />
+      <Nav active={active} setActive={setActive} onLogout={() => setUser(null)} />
       {active === 'home' && <Home setActive={setActive} />}
       {active === 'plans' && <Plans setActive={setActive} />}
       {active === 'pay' && <Pay />}
-      {active === 'panel' && <Panel />}
+      {active === 'panel' && <Panel user={user} />}
       <footer className="border-t border-border/60 py-8 text-center text-muted-foreground text-sm">
         <div className="container">NEBULA VPN © 2026 · Контакты, оферта и реквизиты — в настройках сайта</div>
       </footer>

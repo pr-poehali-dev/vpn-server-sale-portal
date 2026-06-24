@@ -1,0 +1,20 @@
+{
+  "tests": [
+    {
+      "name": "Get server keys for user",
+      "method": "GET",
+      "path": "/keys?user_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": {"servers": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get traffic for user",
+      "method": "GET",
+      "path": "/traffic?user_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": {"bytes_used": 0},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

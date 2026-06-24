@@ -1,0 +1,20 @@
+{
+  "tests": [
+    {
+      "name": "Get subscription status no user",
+      "method": "GET",
+      "path": "/status?user_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": {"subscription": null},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get payments history",
+      "method": "GET",
+      "path": "/payments?user_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": {"payments": []},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "tests": [
+    {
+      "name": "Register new user",
+      "method": "POST",
+      "path": "/register",
+      "body": {"email": "test@nebula.vpn", "password": "test1234", "username": "testuser"},
+      "expectedStatus": 200,
+      "expectedBody": {"user_id": "number"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Login with wrong password",
+      "method": "POST",
+      "path": "/login",
+      "body": {"email": "test@nebula.vpn", "password": "wrongpass"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
